@@ -2,10 +2,19 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '10mb', // زيادة حد حجم الملف
+    },
+  },
+};
+
 export async function POST(request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session) {
+      console.log('Upload failed: No session');
       return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
     }
 
@@ -13,27 +22,28 @@ export async function POST(request) {
     const file = data.get('file');
 
     if (!file) {
+      console.log('Upload failed: No file found in FormData');
       return NextResponse.json({ error: 'لم يتم رفع أي ملف' }, { status: 400 });
     }
 
-    // Convert file to Buffer then to Base64
+    // Convert file to Base64 using standard Uint8Array for compatibility
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    
-    // Get MIME type
     const contentType = file.type || 'image/jpeg';
-    
-    // Create Base64 string
     const base64String = `data:${contentType};base64,${buffer.toString('base64')}`;
 
-    // Return the base64 string directly - this will be saved in MongoDB
+    console.log('Upload success: File size', bytes.byteLength);
+
     return NextResponse.json({ 
       success: true, 
       url: base64String,
       isBase64: true 
     });
   } catch (error) {
-    console.error('Upload error:', error);
-    return NextResponse.json({ error: 'حدث خطأ أثناء معالجة الملف' }, { status: 500 });
+    console.error('SERVER UPLOAD ERROR:', error);
+    return NextResponse.json({ 
+      error: 'حدث خطأ في معالجة الملف',
+      details: error.message 
+    }, { status: 500 });
   }
 }
