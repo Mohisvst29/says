@@ -1,9 +1,6 @@
 import { NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import path from 'path';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import fs from 'fs';
+import { authOptions } from '@/lib/auth';
 
 export async function POST(request) {
   try {
@@ -19,32 +16,24 @@ export async function POST(request) {
       return NextResponse.json({ error: 'لم يتم رفع أي ملف' }, { status: 400 });
     }
 
+    // Convert file to Buffer then to Base64
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-
-    // Create unique file name
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const fileName = `${uniqueSuffix}-${file.name.replace(/\s+/g, '-')}`;
     
-    // Path to save
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads');
+    // Get MIME type
+    const contentType = file.type || 'image/jpeg';
     
-    // Create directory if it doesn't exist
-    if (!fs.existsSync(uploadDir)) {
-      await mkdir(uploadDir, { recursive: true });
-    }
+    // Create Base64 string
+    const base64String = `data:${contentType};base64,${buffer.toString('base64')}`;
 
-    const filePath = path.join(uploadDir, fileName);
-
-    // Save the file
-    await writeFile(filePath, buffer);
-
-    // Return the relative URL
-    const fileUrl = `/uploads/${fileName}`;
-
-    return NextResponse.json({ success: true, url: fileUrl });
+    // Return the base64 string directly - this will be saved in MongoDB
+    return NextResponse.json({ 
+      success: true, 
+      url: base64String,
+      isBase64: true 
+    });
   } catch (error) {
     console.error('Upload error:', error);
-    return NextResponse.json({ error: 'حدث خطأ أثناء رفع الملف' }, { status: 500 });
+    return NextResponse.json({ error: 'حدث خطأ أثناء معالجة الملف' }, { status: 500 });
   }
 }

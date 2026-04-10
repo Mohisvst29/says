@@ -6,7 +6,7 @@ import Car from '@/models/Car';
 import Testimonial from '@/models/Testimonial';
 import SiteSettings from '@/models/SiteSettings';
 
-export async function POST() {
+export async function GET() {
   try {
     await dbConnect();
 
